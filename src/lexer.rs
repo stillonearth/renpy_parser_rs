@@ -255,13 +255,7 @@ impl Lexer {
             if self.eol() {
                 break;
             }
-            if self.match_(r"\.").is_some() {
-                if self.name().is_none() {
-                    let err: Result<()> = self.error("expecting name after dot");
-                    return Err(err.err().unwrap());
-                }
-                continue;
-            }
+
             break;
         }
 
