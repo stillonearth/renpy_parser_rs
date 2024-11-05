@@ -15,7 +15,7 @@ pub struct Lexer {
     block: Vec<Block>,
     init: bool,
     eob: bool,
-    line: usize,
+    line: isize,
     filename: String,
     line_number: usize,
     text: String,
@@ -41,7 +41,7 @@ impl Lexer {
             block,
             init,
             eob: false,
-            line: 0,
+            line: -1,
             filename: String::new(),
             line_number: 0,
             text: String::new(),
@@ -59,15 +59,19 @@ impl Lexer {
         return self.text.clone();
     }
 
+    pub fn pos(&self) -> usize {
+        return self.pos;
+    }
+
     pub fn advance(&mut self) -> bool {
         self.line += 1;
 
-        if self.line >= self.block.len() {
+        if self.line as usize >= self.block.len() {
             self.eob = true;
             return false;
         }
 
-        let block = self.block[self.line].clone();
+        let block = self.block[self.line as usize].clone();
 
         self.filename = block.filename;
         self.line_number = block.line_number;
@@ -87,19 +91,22 @@ impl Lexer {
             return None;
         }
 
+        let text_to_match = self.text[self.pos..].to_string();
         let re = regex::Regex::new(regexp).unwrap();
-        let m = re.find(&self.text[self.pos..]);
+        let m = re.find(&text_to_match);
 
         if let Some(m) = m {
             self.pos += m.end();
-            Some(self.text[m.start()..m.end()].to_string())
+            let result = text_to_match[m.start()..m.end()].to_string();
+
+            Some(result)
         } else {
             None
         }
     }
 
     fn skip_whitespace(&mut self) {
-        self.match_regexp(r"\s+");
+        self.match_regexp(r"^\s+");
     }
 
     pub fn match_(&mut self, regexp: &str) -> Option<String> {
@@ -108,7 +115,7 @@ impl Lexer {
     }
 
     pub fn keyword(&mut self, regexp: &str) -> Option<String> {
-        self.match_(&format!(r"{}\b", regexp))
+        self.match_(&format!(r"{}", regexp))
     }
 
     pub fn error(&self, msg: &str) -> Result<()> {
@@ -262,7 +269,8 @@ impl Lexer {
     }
 
     pub fn require(&mut self, thing: &str) -> Result<String> {
-        if let Some(rv) = self.match_(thing) {
+        let regexp = &format!(r"{}", thing);
+        if let Some(rv) = self.match_(regexp) {
             Ok(rv)
         } else {
             let err: Result<()> = self.error(&format!("expected '{}' not found", thing));

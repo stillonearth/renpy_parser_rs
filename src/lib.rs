@@ -2,9 +2,10 @@ pub mod lexer;
 pub mod parsers;
 
 use anyhow::Result;
+use lexer::Block;
 use parsers::{ParameterInfo, ParseError};
 use regex::Regex;
-use std::{env, fs::File, io::Read, path::Path};
+use std::{fs::File, io::Read, path::Path};
 
 #[derive(Debug, Clone)]
 pub struct LogicalLine {
@@ -191,15 +192,6 @@ pub fn list_logical_lines(filename: &str) -> Result<Vec<LogicalLine>> {
     Ok(rv)
 }
 
-/// Represents a block of logical lines
-#[derive(Debug)]
-pub struct Block {
-    pub filename: String,
-    pub line_number: usize,
-    pub content: String,
-    pub sub_blocks: Vec<Block>,
-}
-
 /// Groups logical lines into blocks based on indentation
 pub fn group_logical_lines(lines: Vec<LogicalLine>) -> Result<Vec<Block>> {
     fn depth_split(line: &str) -> (usize, String) {
@@ -233,9 +225,7 @@ pub fn group_logical_lines(lines: Vec<LogicalLine>) -> Result<Vec<Block>> {
 
         while i < lines.len() {
             let line = &lines[i];
-            println!("line text: {:?}", line.text);
             let (line_depth, rest) = depth_split(&line.text);
-            println!("rest: {:?}", rest);
 
             if line_depth < min_depth {
                 break;
@@ -258,14 +248,14 @@ pub fn group_logical_lines(lines: Vec<LogicalLine>) -> Result<Vec<Block>> {
 
             i += 1;
 
-            let (sub_blocks, new_i) = gll_core(lines, i, line_depth + 1)?;
+            let (subblocks, new_i) = gll_core(lines, i, line_depth + 1)?;
             i = new_i;
 
             rv.push(Block {
                 filename: line.filename.clone(),
                 line_number: line.line_number,
-                content: rest,
-                sub_blocks,
+                text: rest,
+                subblocks,
             });
         }
 
