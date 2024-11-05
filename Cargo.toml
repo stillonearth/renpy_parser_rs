@@ -4,7 +4,7 @@ name = "renpy_parser"
 version = "0.0.1"
 license = "MIT OR Apache-2.0"
 description = "Parse renpy script files with Rust"
-keywords = ["renpy", "visual novel"]
+keywords = ["renpy", "visual-novel", "parser", "rpy"]
 repository = "https://github.com/stillonearth/renpy-rs"
 
 [dependencies]
