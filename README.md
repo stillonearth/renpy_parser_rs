@@ -1,6 +1,6 @@
 # renpy-rs
 
-![image](assets/mascot.jpg)
+<img src="assets/mascot.jpg" width="20%" />
 
 Renpy scenario file parser in rust. Translated from RenPy's `parser.py`.
 
