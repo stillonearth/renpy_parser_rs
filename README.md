@@ -2,13 +2,18 @@
 
 <img src="assets/mascot.jpg" width="20%" />
 
-Renpy scenario file parser in rust. Translated from RenPy's `parser.py`.
+Ren'Py Scenario File Parser in Rust (translated from Ren'Py's parser.py)
 
-This is a subset of renpy language, dropping support for variables, expressions and python code.
+This parser handles a subset of the Ren'Py scripting language, excluding support for variables, expressions, and Python code.
 
 Supported keywords:
 
-```"hide", "init", "jump", "return", "scene", "show"```
+- "hide"
+- "init"
+- "jump"
+- "return"
+- "scene"
+- "show"
 
 ## Usage
 
