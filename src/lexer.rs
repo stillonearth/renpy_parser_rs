@@ -1,31 +1,7 @@
+use anyhow::{Ok, Result};
 use std::collections::HashSet;
-use std::error::Error;
-use std::fmt;
 
-#[derive(Debug)]
-pub struct ParseError {
-    pub filename: String,
-    pub line_number: usize,
-    pub message: String,
-    pub line_text: String,
-    pub position: usize,
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}, line {}: {}\n{}\n{}^",
-            self.filename,
-            self.line_number,
-            self.message,
-            self.line_text,
-            " ".repeat(self.position)
-        )
-    }
-}
-
-impl Error for ParseError {}
+use crate::parsers::ParseError;
 
 #[derive(Clone)]
 pub struct Block {
@@ -48,6 +24,15 @@ pub struct Lexer {
     keywords: HashSet<&'static str>,
 }
 
+#[derive(Clone)]
+pub struct LexerState {
+    filename: String,
+    line_number: usize,
+    text: String,
+    subblock: Vec<Block>,
+    pos: usize,
+}
+
 impl Lexer {
     pub fn new(block: Vec<Block>, init: bool) -> Self {
         let keywords = HashSet::from(["hide", "init", "jump", "return", "scene", "show"]);
@@ -64,6 +49,14 @@ impl Lexer {
             pos: 0,
             keywords,
         }
+    }
+
+    pub fn eob(&self) -> bool {
+        return self.eob;
+    }
+
+    pub fn text(&self) -> String {
+        return self.text.clone();
     }
 
     pub fn advance(&mut self) -> bool {
@@ -109,7 +102,7 @@ impl Lexer {
         self.match_regexp(r"\s+");
     }
 
-    fn match_(&mut self, regexp: &str) -> Option<String> {
+    pub fn match_(&mut self, regexp: &str) -> Option<String> {
         self.skip_whitespace();
         self.match_regexp(regexp)
     }
@@ -118,15 +111,16 @@ impl Lexer {
         self.match_(&format!(r"{}\b", regexp))
     }
 
-    fn error(&self, msg: &str) -> ! {
-        Err(ParseError {
+    pub fn error(&self, msg: &str) -> Result<()> {
+        let err = ParseError {
             filename: self.filename.clone(),
             line_number: self.line_number,
             message: msg.to_string(),
-            line_text: self.text.clone(),
-            position: self.pos,
-        })
-        .unwrap()
+            line: Some(self.text.clone()),
+            pos: Some(self.pos),
+        }
+        .into();
+        Err(err)
     }
 
     pub fn eol(&mut self) -> bool {
@@ -134,22 +128,25 @@ impl Lexer {
         self.pos >= self.text.len()
     }
 
-    pub fn expect_eol(&mut self) {
+    pub fn expect_eol(&mut self) -> Result<()> {
         if !self.eol() {
-            self.error("end of line expected");
+            self.error("end of line expected")?;
         }
+        Ok(())
     }
 
-    pub fn expect_noblock(&mut self, stmt: &str) {
+    pub fn expect_noblock(&mut self, stmt: &str) -> Result<()> {
         if !self.subblock.is_empty() {
-            self.error(&format!("{} does not expect a block. Please check the indentation of the line after this one.", stmt));
+            self.error(&format!("{} does not expect a block. Please check the indentation of the line after this one.", stmt))?;
         }
+        Ok(())
     }
 
-    pub fn expect_block(&mut self, stmt: &str) {
+    pub fn expect_block(&mut self, stmt: &str) -> Result<()> {
         if self.subblock.is_empty() {
-            self.error(&format!("{} expects a non-empty block.", stmt));
+            self.error(&format!("{} expects a non-empty block.", stmt))?;
         }
+        Ok(())
     }
 
     pub fn subblock_lexer(&mut self, init: bool) -> Lexer {
@@ -220,27 +217,28 @@ impl Lexer {
         }
     }
 
-    pub fn dotted_name(&mut self) -> Option<String> {
+    pub fn dotted_name(&mut self) -> Result<Option<String>> {
         let mut rv = match self.name() {
             Some(name) => name,
-            None => return None,
+            _ => return Ok(None),
         };
 
         while self.match_(r"\.").is_some() {
-            let n = match self.name() {
-                Some(name) => name,
-                None => return self.error("expecting name"),
-            };
+            if self.name().is_none() {
+                let err: Result<()> = self.error("expecting name");
+                return Err(err.err().unwrap());
+            }
+            let n = self.name().unwrap();
             rv = format!("{}.{}", rv, n);
         }
 
-        Some(rv)
+        Ok(Some(rv))
     }
 
-    pub fn simple_expression(&mut self) -> Option<String> {
+    pub fn simple_expression(&mut self) -> Result<Option<String>> {
         self.skip_whitespace();
         if self.eol() {
-            return None;
+            return Ok(None);
         }
 
         let start = self.pos;
@@ -252,21 +250,23 @@ impl Lexer {
             }
             if self.match_(r"\.").is_some() {
                 if self.name().is_none() {
-                    return self.error("expecting name after dot");
+                    let err: Result<()> = self.error("expecting name after dot");
+                    return Err(err.err().unwrap());
                 }
                 continue;
             }
             break;
         }
 
-        Some(self.text[start..self.pos].to_string())
+        Ok(Some(self.text[start..self.pos].to_string()))
     }
 
-    pub fn require(&mut self, thing: &str) -> String {
+    pub fn require(&mut self, thing: &str) -> Result<String> {
         if let Some(rv) = self.match_(thing) {
-            rv
+            Ok(rv)
         } else {
-            self.error(&format!("expected '{}' not found", thing))
+            let err: Result<()> = self.error(&format!("expected '{}' not found", thing));
+            return Err(err.err().unwrap());
         }
     }
 
@@ -279,5 +279,27 @@ impl Lexer {
 
     pub fn get_location(&self) -> usize {
         return self.line_number;
+    }
+
+    /// Returns an opaque representation of the lexer state. This can be
+    /// passed to revert to back the lexer up.
+    pub fn checkpoint(&self) -> LexerState {
+        LexerState {
+            filename: self.filename.clone(),
+            line_number: self.line_number,
+            text: self.text.clone(),
+            subblock: self.subblock.clone(),
+            pos: self.pos,
+        }
+    }
+
+    /// Reverts the lexer to the given state. State must have been returned
+    /// by a previous checkpoint operation on this lexer.
+    pub fn revert(&mut self, state: LexerState) {
+        self.filename = state.filename;
+        self.line_number = state.line_number;
+        self.text = state.text;
+        self.subblock = state.subblock;
+        self.pos = state.pos;
     }
 }
