@@ -1,4 +1,4 @@
-# renpy-rs
+# renpy_parser_rs
 
 <img src="assets/mascot.jpg" width="20%" />
 
