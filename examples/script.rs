@@ -8,13 +8,7 @@ fn main() {
 
     println!("blocks len, {}", blocks.clone().len());
 
-    // for block in blocks {
-    //     println!("block: {}", block.text);
-    // }
-
-    let (asts, errors) = parse_block(l);
-
-    println!("ast len, {}", asts.clone().len());
+    let (asts, _) = parse_block(l);
 
     for ast in asts {
         println!("ast: {:?}", ast);

@@ -35,7 +35,7 @@ pub struct LexerState {
 
 impl Lexer {
     pub fn new(block: Vec<Block>, init: bool) -> Self {
-        let keywords = HashSet::from(["hide", "init", "jump", "return", "scene", "show"]);
+        let keywords = HashSet::from(["hide", "init", "jump", "return", "scene", "show", "play"]);
 
         Lexer {
             block,
@@ -208,6 +208,10 @@ impl Lexer {
 
     pub fn word(&mut self) -> Option<String> {
         self.match_(r"[a-zA-Z_\u00a0-\ufffd][0-9a-zA-Z_\u00a0-\ufffd]*")
+    }
+
+    pub fn audio_filename(&mut self) -> Option<String> {
+        self.match_(r#""([a-zA-Z_\u00a0-\ufffd][0-9a-zA-Z_\u00a0-\ufffd]*).+\.(\w)+\"$"#)
     }
 
     pub fn name(&mut self) -> Option<String> {

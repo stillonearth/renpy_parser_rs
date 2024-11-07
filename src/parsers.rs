@@ -3,6 +3,7 @@ use anyhow::{anyhow, Result};
 use std::collections::HashSet;
 use std::error;
 use std::fmt;
+use std::io::empty;
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -66,6 +67,7 @@ pub enum AST {
     Label(usize, String, Vec<AST>, Option<String>),
     Init(usize, Vec<AST>, i32),
     Say(usize, Option<String>, String, Option<String>),
+    Play(usize, String, String),
     UserStatement(usize, String),
     Error,
 }
@@ -120,6 +122,26 @@ pub fn parse_image_specifier(lexer: &mut Lexer) -> Result<(String, Option<String
     let layer = layer.unwrap_or_else(|| "master".to_string());
 
     Ok((image_name, expression, layer))
+}
+
+pub fn parse_play_specifier(lexer: &mut Lexer) -> Result<(String)> {
+    let play_type = lexer.name().unwrap_or_default();
+
+    if play_type == "music" || play_type == "sound" {
+        return Ok(play_type);
+    }
+
+    return Err(anyhow!("Play or sound is required"));
+}
+
+pub fn parse_audio_filename(lexer: &mut Lexer) -> Result<(String)> {
+    let audio_filename = lexer.audio_filename();
+
+    if audio_filename.is_none() {
+        return Err(anyhow!("provide mp3, ogg or wav file"));
+    }
+
+    return Ok(audio_filename.unwrap());
 }
 
 #[derive(Debug)]
@@ -277,6 +299,17 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         l.expect_noblock("hide statement")?;
         l.advance();
         return Ok(rv);
+    }
+
+    if l.keyword("play").is_some() {
+        let play_type = parse_play_specifier(l)?;
+
+        let filename = parse_audio_filename(l)?;
+
+        l.expect_eol()?;
+        l.advance();
+
+        return Ok(AST::Play(loc, play_type, filename));
     }
 
     if l.keyword("label").is_some() {
