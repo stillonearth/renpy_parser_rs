@@ -14,42 +14,6 @@ pub struct LogicalLine {
     text: String,
 }
 
-#[allow(dead_code)]
-#[derive(Debug)]
-enum Statement {
-    Say {
-        who: Option<String>,
-        what: String,
-        with_: Option<String>,
-    },
-    Jump {
-        target: String,
-        expression: bool,
-    },
-    Menu {
-        items: Vec<(String, String, Vec<Statement>)>,
-        set: Option<String>,
-        with_: Option<String>,
-    },
-    Python {
-        code: String,
-        hide: bool,
-    },
-    If {
-        entries: Vec<(String, Vec<Statement>)>,
-    },
-    While {
-        condition: String,
-        block: Vec<Statement>,
-    },
-    Label {
-        name: String,
-        block: Vec<Statement>,
-        parameters: Option<ParameterInfo>,
-    },
-    Pass,
-}
-
 /// Reads the specified filename and divides it into logical lines
 pub fn list_logical_lines(filename: &str) -> Result<Vec<LogicalLine>> {
     let mut file = File::open(Path::new(filename))?;

@@ -14,6 +14,7 @@ Supported keywords:
 - "return"
 - "scene"
 - "show"
+- "stop"
 
 ## Usage
 

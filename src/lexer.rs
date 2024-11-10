@@ -214,6 +214,22 @@ impl Lexer {
         self.match_(r#""([a-zA-Z_\u00a0-\ufffd][0-9a-zA-Z_\u00a0-\ufffd]*).+\.(\w)+\"$"#)
     }
 
+    pub fn stop_arguments(&mut self) -> (Option<String>, Option<f32>) {
+        let rmatch = self.match_(r#"^[a&&b]|(fadeout \d+\.\d+)$"#);
+        if let Some(rmatch) = rmatch {
+            if rmatch == "" {
+                return (None, None);
+            }
+
+            let parts: Vec<&str> = rmatch.split(" ").collect();
+            let length = parts[1].parse::<f32>().unwrap();
+
+            return (Some(parts[0].to_string()), Some(length));
+        }
+
+        return (None, None);
+    }
+
     pub fn name(&mut self) -> Option<String> {
         let oldpos = self.pos;
         let rv = self.word();

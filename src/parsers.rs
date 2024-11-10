@@ -3,7 +3,6 @@ use anyhow::{anyhow, Result};
 use std::collections::HashSet;
 use std::error;
 use std::fmt;
-use std::io::empty;
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -66,8 +65,9 @@ pub enum AST {
     Hide(usize, String),
     Label(usize, String, Vec<AST>, Option<String>),
     Init(usize, Vec<AST>, i32),
-    Say(usize, Option<String>, String, Option<String>),
+    Say(usize, Option<String>, String),
     Play(usize, String, String),
+    Stop(usize, String, Option<String>, Option<f32>),
     UserStatement(usize, String),
     Error,
 }
@@ -124,7 +124,7 @@ pub fn parse_image_specifier(lexer: &mut Lexer) -> Result<(String, Option<String
     Ok((image_name, expression, layer))
 }
 
-pub fn parse_play_specifier(lexer: &mut Lexer) -> Result<(String)> {
+pub fn parse_audio_specifier(lexer: &mut Lexer) -> Result<(String)> {
     let play_type = lexer.name().unwrap_or_default();
 
     if play_type == "music" || play_type == "sound" {
@@ -134,14 +134,14 @@ pub fn parse_play_specifier(lexer: &mut Lexer) -> Result<(String)> {
     return Err(anyhow!("Play or sound is required"));
 }
 
-pub fn parse_audio_filename(lexer: &mut Lexer) -> Result<(String)> {
+pub fn parse_audio_filename(lexer: &mut Lexer) -> Result<String> {
     let audio_filename = lexer.audio_filename();
 
     if audio_filename.is_none() {
         return Err(anyhow!("provide mp3, ogg or wav file"));
     }
 
-    return Ok(audio_filename.unwrap());
+    return Ok(audio_filename.unwrap().replace("\"", ""));
 }
 
 #[derive(Debug)]
@@ -302,7 +302,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
     }
 
     if l.keyword("play").is_some() {
-        let play_type = parse_play_specifier(l)?;
+        let play_type = parse_audio_specifier(l)?;
 
         let filename = parse_audio_filename(l)?;
 
@@ -310,6 +310,17 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         l.advance();
 
         return Ok(AST::Play(loc, play_type, filename));
+    }
+
+    if l.keyword("stop").is_some() {
+        let audio_specifier = parse_audio_specifier(l)?;
+
+        let (effect, length) = l.stop_arguments();
+
+        l.expect_eol()?;
+        l.advance();
+
+        return Ok(AST::Stop(loc, audio_specifier, effect, length));
     }
 
     if l.keyword("label").is_some() {
@@ -359,7 +370,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         l.expect_noblock(&format!("{} statement", word))?;
         l.advance();
 
-        let rv = AST::UserStatement(loc, text.clone());
+        let rv = AST::Say(loc, None, text.clone());
 
         return Ok(rv);
     }
@@ -371,7 +382,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         if l.eol() {
             l.expect_noblock("say statement")?;
             l.advance();
-            return Ok(AST::Say(loc, None, what, None));
+            return Ok(AST::Say(loc, None, what));
         }
     }
 
@@ -384,7 +395,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         l.expect_eol()?;
         l.expect_noblock("say statement")?;
         l.advance();
-        return Ok(AST::Say(loc, Some(who), what, None));
+        return Ok(AST::Say(loc, Some(who), what));
     }
 
     let err = l.error("expected statement.").err().unwrap();
