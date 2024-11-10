@@ -1,6 +1,5 @@
 use crate::lexer::Lexer;
 use anyhow::{anyhow, Result};
-use std::collections::HashSet;
 use std::error;
 use std::fmt;
 
@@ -58,15 +57,16 @@ impl ParseError {
 
 #[derive(Clone, Debug)]
 pub enum AST {
-    Return(usize, Option<String>),
+    Define(usize, String),
+    Hide(usize, String),
+    Init(usize, Vec<AST>, i32),
     Jump(usize, String, bool),
+    Label(usize, String, Vec<AST>, Option<String>),
+    Play(usize, String, String),
+    Return(usize, Option<String>),
+    Say(usize, Option<String>, String),
     Scene(usize, Option<String>, String),
     Show(usize, String),
-    Hide(usize, String),
-    Label(usize, String, Vec<AST>, Option<String>),
-    Init(usize, Vec<AST>, i32),
-    Say(usize, Option<String>, String),
-    Play(usize, String, String),
     Stop(usize, String, Option<String>, Option<f32>),
     UserStatement(usize, String),
     Error,
@@ -106,32 +106,30 @@ pub fn parse_simple_expression_list(input: &str) -> Result<Vec<String>> {
 }
 
 pub fn parse_with(_: &mut Lexer, node: AST) -> Result<Vec<AST>> {
-    return Ok(vec![node]);
+    Ok(vec![node])
 }
 
 pub fn parse_image_specifier(lexer: &mut Lexer) -> Result<(String, Option<String>, String)> {
     let layer: Option<String> = None;
-    let image_name: String;
-    let expression: Option<String>;
 
     let image_names = parse_image_name(lexer)?;
 
-    image_name = image_names.join(" ");
-    expression = None;
+    let image_name: String = image_names.join(" ");
+    let expression: Option<String> = None;
 
     let layer = layer.unwrap_or_else(|| "master".to_string());
 
     Ok((image_name, expression, layer))
 }
 
-pub fn parse_audio_specifier(lexer: &mut Lexer) -> Result<(String)> {
+pub fn parse_audio_specifier(lexer: &mut Lexer) -> Result<String> {
     let play_type = lexer.name().unwrap_or_default();
 
     if play_type == "music" || play_type == "sound" {
         return Ok(play_type);
     }
 
-    return Err(anyhow!("Play or sound is required"));
+    Err(anyhow!("Play or sound is required"))
 }
 
 pub fn parse_audio_filename(lexer: &mut Lexer) -> Result<String> {
@@ -141,7 +139,7 @@ pub fn parse_audio_filename(lexer: &mut Lexer) -> Result<String> {
         return Err(anyhow!("provide mp3, ogg or wav file"));
     }
 
-    return Ok(audio_filename.unwrap().replace("\"", ""));
+    Ok(audio_filename.unwrap().replace("\"", ""))
 }
 
 #[derive(Debug)]
@@ -150,87 +148,6 @@ pub struct ParameterInfo {
     pub positional: Vec<String>,
     pub extrapos: Option<String>,
     pub extrakw: Option<String>,
-}
-
-pub fn parse_parameters(l: &mut Lexer) -> Result<Option<ParameterInfo>> {
-    let mut parameters = Vec::new();
-    let mut positional = Vec::new();
-    let mut extrapos = None;
-    let mut extrakw = None;
-    let mut add_positional = true;
-    let mut names = HashSet::new();
-
-    if !l.match_("(").is_some() {
-        return Ok(None);
-    }
-
-    loop {
-        if l.match_(")").is_some() {
-            break;
-        }
-
-        if l.match_("**").is_some() {
-            if extrakw.is_some() {
-                l.error("a label may have only one ** parameter")?;
-            }
-
-            let name = l.name().unwrap_or_default();
-            let name = l.require(&name)?;
-
-            if names.contains(&name) {
-                l.error(&format!("parameter {} appears twice.", name))?;
-            }
-
-            names.insert(name.clone());
-            extrakw = Some(name);
-        } else if l.match_("*").is_some() {
-            if !add_positional {
-                l.error("a label may have only one * parameter")?;
-            }
-
-            add_positional = false;
-
-            if let Some(name) = l.name() {
-                if names.contains(&name) {
-                    l.error(&format!("parameter {} appears twice.", name))?;
-                }
-                names.insert(name.clone());
-                extrapos = Some(name);
-            }
-        } else {
-            let name = l.name().unwrap_or_default();
-            let name = l.require(&name)?;
-
-            if names.contains(&name) {
-                l.error(&format!("parameter {} appears twice.", name))?;
-            }
-
-            names.insert(name.clone());
-
-            let default = None;
-
-            parameters.push((name.clone(), default));
-
-            if add_positional {
-                positional.push(name);
-            }
-        }
-
-        if l.match_(")").is_some() {
-            break;
-        }
-
-        if !l.match_(",").is_some() {
-            l.error("Expected ',' or ')'")?;
-        }
-    }
-
-    Ok(Some(ParameterInfo {
-        parameters,
-        positional,
-        extrapos,
-        extrakw,
-    }))
 }
 
 pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
@@ -328,7 +245,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
 
         let (block_ast, block_err) = parse_block(&mut l.subblock_lexer(false));
 
-        if block_err.len() > 0 {
+        if !block_err.is_empty() {
             for err in block_err {
                 l.error(&err)?;
             }
@@ -338,6 +255,15 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
 
         // let label = AST::Label(loc, name, block_ast, parameters);
         let label = AST::Label(loc, name, block_ast, None);
+        return Ok(label);
+    }
+
+    if l.keyword("define").is_some() {
+        let definition = l.rest();
+        l.expect_eol()?;
+        l.advance();
+
+        let label = AST::Define(loc, definition);
         return Ok(label);
     }
 
@@ -351,7 +277,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
             parse_block(&mut l.subblock_lexer(false))
         };
 
-        if block_err.len() > 0 {
+        if !block_err.is_empty() {
             for err in block_err {
                 l.error(&err)?;
             }
@@ -366,12 +292,15 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
     let state = l.checkpoint();
 
     if let Some(word) = l.word() {
-        let text = l.text();
+        let text = l.string();
+        if text.is_none() {
+            l.error("empty text in say statement")?;
+        }
+
         l.expect_noblock(&format!("{} statement", word))?;
         l.advance();
 
-        let rv = AST::Say(loc, None, text.clone());
-
+        let rv = AST::Say(loc, Some(word), text.unwrap());
         return Ok(rv);
     }
 
@@ -382,24 +311,13 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         if l.eol() {
             l.expect_noblock("say statement")?;
             l.advance();
+
             return Ok(AST::Say(loc, None, what));
         }
     }
 
-    l.revert(state.clone());
-
-    let who = l.simple_expression()?;
-    let what = l.string();
-
-    if let (Some(who), Some(what)) = (who, what) {
-        l.expect_eol()?;
-        l.expect_noblock("say statement")?;
-        l.advance();
-        return Ok(AST::Say(loc, Some(who), what));
-    }
-
     let err = l.error("expected statement.").err().unwrap();
-    return Err(err);
+    Err(err)
 }
 
 pub fn parse_block(l: &mut Lexer) -> (Vec<AST>, Vec<String>) {

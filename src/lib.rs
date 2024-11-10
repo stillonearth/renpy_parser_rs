@@ -3,7 +3,7 @@ pub mod parsers;
 
 use anyhow::Result;
 use lexer::Block;
-use parsers::{ParameterInfo, ParseError};
+use parsers::ParseError;
 use regex::Regex;
 use std::{fs::File, io::Read, path::Path};
 
@@ -160,10 +160,10 @@ pub fn list_logical_lines(filename: &str) -> Result<Vec<LogicalLine>> {
 pub fn group_logical_lines(lines: Vec<LogicalLine>) -> Result<Vec<Block>> {
     fn depth_split(line: &str) -> (usize, String) {
         let mut depth = 0;
-        let mut chars = line.chars();
+        let chars = line.chars();
         let mut chars_copy = chars.clone();
 
-        while let Some(c) = chars.next() {
+        for c in chars {
             if c == ' ' {
                 depth += 1;
             } else {
