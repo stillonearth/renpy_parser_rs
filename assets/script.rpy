@@ -40,4 +40,9 @@ label chapter1_1:
 
     character_2 "Thanks for listening, even if it's just a voice in my head!"
 
+    game_mechanic "card play"
+
+    llm_generate ai "You are narrator in a visual novel. Player just played poker with youand lost. What do you say?"
+    llm_generate ai
+
     return

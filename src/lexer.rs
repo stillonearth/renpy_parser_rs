@@ -36,7 +36,16 @@ pub struct LexerState {
 impl Lexer {
     pub fn new(block: Vec<Block>, init: bool) -> Self {
         let keywords = HashSet::from([
-            "hide", "init", "jump", "return", "scene", "show", "play", "define",
+            "hide",
+            "init",
+            "jump",
+            "return",
+            "scene",
+            "show",
+            "play",
+            "define",
+            "game_mechanic",
+            "llm_generate",
         ]);
 
         Lexer {
@@ -246,24 +255,6 @@ impl Lexer {
         }
     }
 
-    pub fn dotted_name(&mut self) -> Result<Option<String>> {
-        let mut rv = match self.name() {
-            Some(name) => name,
-            _ => return Ok(None),
-        };
-
-        while self.match_(r"\.").is_some() {
-            if self.name().is_none() {
-                let err: Result<()> = self.error("expecting name");
-                return Err(err.err().unwrap());
-            }
-            let n = self.name().unwrap();
-            rv = format!("{}.{}", rv, n);
-        }
-
-        Ok(Some(rv))
-    }
-
     pub fn simple_expression(&mut self) -> Result<Option<String>> {
         self.skip_whitespace();
         if self.eol() {
@@ -305,8 +296,6 @@ impl Lexer {
         return self.line_number;
     }
 
-    /// Returns an opaque representation of the lexer state. This can be
-    /// passed to revert to back the lexer up.
     pub fn checkpoint(&self) -> LexerState {
         LexerState {
             filename: self.filename.clone(),
@@ -317,8 +306,6 @@ impl Lexer {
         }
     }
 
-    /// Reverts the lexer to the given state. State must have been returned
-    /// by a previous checkpoint operation on this lexer.
     pub fn revert(&mut self, state: LexerState) {
         self.filename = state.filename;
         self.line_number = state.line_number;

@@ -2,8 +2,8 @@ pub mod lexer;
 pub mod parsers;
 
 use anyhow::Result;
-use lexer::Block;
-use parsers::ParseError;
+use lexer::{Block, Lexer};
+use parsers::{parse_block, ParseError, AST};
 use regex::Regex;
 use std::{fs::File, io::Read, path::Path};
 
@@ -228,4 +228,12 @@ pub fn group_logical_lines(lines: Vec<LogicalLine>) -> Result<Vec<Block>> {
 
     let (blocks, _) = gll_core(&lines, 0, 0)?;
     Ok(blocks)
+}
+
+pub fn parse_scenario(filename: &str) -> Result<(Vec<AST>, Vec<String>)> {
+    let lines = list_logical_lines(filename).unwrap();
+    let blocks = group_logical_lines(lines).unwrap();
+    let l = &mut Lexer::new(blocks.clone(), true);
+
+    Ok(parse_block(l))
 }

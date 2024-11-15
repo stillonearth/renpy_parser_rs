@@ -68,7 +68,8 @@ pub enum AST {
     Scene(usize, Option<String>, String),
     Show(usize, String),
     Stop(usize, String, Option<String>, Option<f32>),
-    UserStatement(usize, String),
+    GameMechanic(usize, String),
+    LLMGenerate(usize, String, Option<String>),
     Error,
 }
 
@@ -196,6 +197,34 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
 
         l.advance();
         return Ok(AST::Scene(loc, Some(imspec), layer));
+    }
+
+    if l.keyword("game_mechanic").is_some() {
+        let argument = l.string();
+
+        if argument.is_none() {
+            l.error("Expected a string after 'game_mechanic' keyword.")?;
+        }
+
+        l.expect_eol()?;
+        l.expect_noblock("game_mechanic statement")?;
+        l.advance();
+
+        return Ok(AST::GameMechanic(loc, argument.unwrap()));
+    }
+
+    if l.keyword("llm_generate").is_some() {
+        if let Some(who) = l.word() {
+            let prompt = l.string();
+
+            l.expect_eol()?;
+            l.expect_noblock("game_mechanic statement")?;
+            l.advance();
+
+            return Ok(AST::LLMGenerate(loc, who, prompt));
+        }
+
+        l.error("Expected word after 'llm_generate' keyword.")?;
     }
 
     if l.keyword("show").is_some() {
