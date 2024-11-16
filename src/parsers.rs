@@ -73,6 +73,69 @@ pub enum AST {
     Error,
 }
 
+impl AST {
+    pub fn index(&self) -> usize {
+        *match self {
+            AST::Define(i, _) => i,
+            AST::Hide(i, _) => i,
+            AST::Init(i, _, _) => i,
+            AST::Jump(i, _, _) => i,
+            AST::Label(i, _, _, _) => i,
+            AST::Play(i, _, _) => i,
+            AST::Return(i, _) => i,
+            AST::Say(i, _, _) => i,
+            AST::Scene(i, _, _) => i,
+            AST::Show(i, _) => i,
+            AST::Stop(i, _, _, _) => i,
+            AST::GameMechanic(i, _) => i,
+            AST::LLMGenerate(i, _, _) => i,
+            AST::Error => todo!(),
+        }
+    }
+
+    pub fn set_index(&mut self, index: usize) {
+        *match self {
+            AST::Define(i, _) => i,
+            AST::Hide(i, _) => i,
+            AST::Init(i, _, _) => i,
+            AST::Jump(i, _, _) => i,
+            AST::Label(i, _, _, _) => i,
+            AST::Play(i, _, _) => i,
+            AST::Return(i, _) => i,
+            AST::Say(i, _, _) => i,
+            AST::Scene(i, _, _) => i,
+            AST::Show(i, _) => i,
+            AST::Stop(i, _, _, _) => i,
+            AST::GameMechanic(i, _) => i,
+            AST::LLMGenerate(i, _, _) => i,
+            AST::Error => todo!(),
+        } = index;
+    }
+}
+
+pub fn inject_node(ast: Vec<AST>, node: AST) -> Vec<AST> {
+    let node_index = node.index();
+
+    // Step 1: Shift all nodes with index >= node_index
+    let mut shifted_ast: Vec<AST> = ast
+        .into_iter()
+        .map(|mut item| {
+            if item.index() >= node_index {
+                item.set_index(item.index() + 1);
+            }
+            item
+        })
+        .collect();
+
+    // Step 2: Insert the new node at the correct position
+    shifted_ast.push(node);
+
+    // Sort the vector by index to maintain order
+    shifted_ast.sort_by_key(|item| item.index());
+
+    shifted_ast
+}
+
 fn parse_image_name(lexer: &mut Lexer) -> Result<Vec<String>> {
     let name = lexer.name().unwrap_or_default();
 
