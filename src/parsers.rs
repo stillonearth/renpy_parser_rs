@@ -217,7 +217,7 @@ pub struct ParameterInfo {
 pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
     let loc = l.get_location();
 
-    if l.keyword("return").is_some() {
+    if l.keyword("^return").is_some() {
         let nonblock = l.expect_noblock("return statement");
         if nonblock.is_err() {
             return Err(nonblock.err().unwrap());
@@ -234,7 +234,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(AST::Return(loc, Some(rest)));
     }
 
-    if l.keyword("jump").is_some() {
+    if l.keyword("^jump").is_some() {
         let nonblock = l.expect_noblock("jump statement");
         if nonblock.is_err() {
             return Err(nonblock.err().unwrap());
@@ -247,7 +247,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(AST::Jump(loc, target, false));
     }
 
-    if l.keyword("scene").is_some() {
+    if l.keyword("^scene").is_some() {
         l.expect_noblock("scene statement")?;
 
         let layer = "master".to_string();
@@ -262,7 +262,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(AST::Scene(loc, Some(imspec), layer));
     }
 
-    if l.keyword("game_mechanic").is_some() {
+    if l.keyword("^game_mechanic").is_some() {
         let argument = l.string();
 
         if argument.is_none() {
@@ -276,7 +276,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(AST::GameMechanic(loc, argument.unwrap()));
     }
 
-    if l.keyword("llm_generate").is_some() {
+    if l.keyword("^llm_generate").is_some() {
         if let Some(who) = l.word() {
             let prompt = l.string();
 
@@ -290,7 +290,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         l.error("Expected word after 'llm_generate' keyword.")?;
     }
 
-    if l.keyword("show").is_some() {
+    if l.keyword("^show").is_some() {
         let imspec = parse_image_specifier(l)?.0;
         let rv = parse_with(l, AST::Show(loc, imspec))?[0].clone();
 
@@ -300,7 +300,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(rv);
     }
 
-    if l.keyword("hide").is_some() {
+    if l.keyword("^hide").is_some() {
         let imspec = parse_image_specifier(l)?.0;
         let rv = parse_with(l, AST::Hide(loc, imspec))?[0].clone();
 
@@ -310,7 +310,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(rv);
     }
 
-    if l.keyword("play").is_some() {
+    if l.keyword("^play").is_some() {
         let play_type = parse_audio_specifier(l)?;
 
         let filename = parse_audio_filename(l)?;
@@ -321,7 +321,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(AST::Play(loc, play_type, filename));
     }
 
-    if l.keyword("stop").is_some() {
+    if l.keyword("^stop").is_some() {
         let audio_specifier = parse_audio_specifier(l)?;
 
         let (effect, length) = l.stop_arguments();
@@ -332,7 +332,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(AST::Stop(loc, audio_specifier, effect, length));
     }
 
-    if l.keyword("label").is_some() {
+    if l.keyword("^label").is_some() {
         let name = l.name().unwrap_or_default();
 
         let (block_ast, block_err) = parse_block(&mut l.subblock_lexer(false));
@@ -350,7 +350,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(label);
     }
 
-    if l.keyword("define").is_some() {
+    if l.keyword("^define").is_some() {
         let definition = l.rest();
         l.expect_eol()?;
         l.advance();
@@ -359,7 +359,7 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(label);
     }
 
-    if l.keyword("init").is_some() {
+    if l.keyword("^init").is_some() {
         let priority = l.integer().map_or(0, |p| p.parse::<i32>().unwrap_or(0));
 
         let (block_ast, block_err) = {
