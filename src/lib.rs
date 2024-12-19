@@ -14,17 +14,9 @@ pub struct LogicalLine {
     text: String,
 }
 
-/// Reads the specified filename and divides it into logical lines
-pub fn list_logical_lines(filename: &str) -> Result<Vec<LogicalLine>> {
-    let mut file = File::open(Path::new(filename))?;
-    let mut data = String::new();
-    file.read_to_string(&mut data)?;
-
+pub fn parse_logical_lines(mut data: String, filename: String) -> Result<Vec<LogicalLine>> {
     // Replace Windows line endings
     data = data.replace("\r\n", "\n");
-
-    // Handle path elision if environment variable is set
-    let filename = filename.to_string();
 
     // Add newlines to fix lousy editors
     data.push_str("\n\n");
@@ -154,6 +146,15 @@ pub fn list_logical_lines(filename: &str) -> Result<Vec<LogicalLine>> {
     }
 
     Ok(rv)
+}
+
+/// Reads the specified filename and divides it into logical lines
+pub fn list_logical_lines(filename: &str) -> Result<Vec<LogicalLine>> {
+    let mut file = File::open(Path::new(filename))?;
+    let mut data = String::new();
+    file.read_to_string(&mut data)?;
+
+    parse_logical_lines(data, filename.to_string())
 }
 
 /// Groups logical lines into blocks based on indentation

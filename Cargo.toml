@@ -1,14 +1,14 @@
 [package]
 edition = "2021"
 name = "renpy_parser"
-version = "0.0.7"
+version = "0.0.8"
 license = "MIT OR Apache-2.0"
 description = "Parse renpy script files with Rust"
 keywords = ["renpy", "visual-novel", "parser", "rpy"]
 repository = "https://github.com/stillonearth/renpy-rs"
 
 [dependencies]
-anyhow = "1.0.92"
+anyhow = "1.0.94"
 regex = "1.11.1"
 
 
