@@ -14,9 +14,9 @@ pub struct LogicalLine {
     text: String,
 }
 
-pub fn parse_logical_lines(mut data: String, filename: String) -> Result<Vec<LogicalLine>> {
+pub fn parse_logical_lines(data: &str, filename: &str) -> Result<Vec<LogicalLine>> {
     // Replace Windows line endings
-    data = data.replace("\r\n", "\n");
+    let mut data = data.to_string().replace("\r\n", "\n");
 
     // Add newlines to fix lousy editors
     data.push_str("\n\n");
@@ -41,7 +41,7 @@ pub fn parse_logical_lines(mut data: String, filename: String) -> Result<Vec<Log
 
             if c == '\t' {
                 let parse_error = ParseError::new(
-                    filename,
+                    filename.to_string(),
                     number,
                     "Tab characters are not allowed in Ren'Py scripts".to_string(),
                     Some(line),
@@ -60,7 +60,7 @@ pub fn parse_logical_lines(mut data: String, filename: String) -> Result<Vec<Log
                 let re = Regex::new(r"^\s*$").unwrap();
                 if !re.is_match(&line) {
                     rv.push(LogicalLine {
-                        filename: filename.clone(),
+                        filename: filename.to_string(),
                         line_number: start_number,
                         text: line.clone(),
                     });
@@ -154,7 +154,7 @@ pub fn list_logical_lines(filename: &str) -> Result<Vec<LogicalLine>> {
     let mut data = String::new();
     file.read_to_string(&mut data)?;
 
-    parse_logical_lines(data, filename.to_string())
+    parse_logical_lines(&data, filename)
 }
 
 /// Groups logical lines into blocks based on indentation
@@ -231,9 +231,20 @@ pub fn group_logical_lines(lines: Vec<LogicalLine>) -> Result<Vec<Block>> {
     Ok(blocks)
 }
 
-pub fn parse_scenario(filename: &str) -> Result<(Vec<AST>, Vec<String>)> {
+pub fn parse_scenario_from_file(filename: &str) -> Result<(Vec<AST>, Vec<String>)> {
     let lines = list_logical_lines(filename).unwrap();
     let blocks = group_logical_lines(lines).unwrap();
+    let l = &mut Lexer::new(blocks.clone(), true);
+
+    Ok(parse_block(l))
+}
+
+pub fn parse_scenario_from_string(
+    content: &str,
+    filename: &str,
+) -> Result<(Vec<AST>, Vec<String>)> {
+    let lines = parse_logical_lines(content, filename)?;
+    let blocks = group_logical_lines(lines)?;
     let l = &mut Lexer::new(blocks.clone(), true);
 
     Ok(parse_block(l))
