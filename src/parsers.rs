@@ -70,6 +70,7 @@ pub enum AST {
     Stop(usize, String, Option<String>, Option<f32>),
     GameMechanic(usize, String),
     LLMGenerate(usize, String, Option<String>),
+    Comment(usize, String),
     Error,
 }
 
@@ -89,6 +90,7 @@ impl AST {
             AST::Stop(i, _, _, _) => i,
             AST::GameMechanic(i, _) => i,
             AST::LLMGenerate(i, _, _) => i,
+            AST::Comment(i, _) => i,
             AST::Error => todo!(),
         }
     }
@@ -108,6 +110,7 @@ impl AST {
             AST::Stop(i, _, _, _) => i,
             AST::GameMechanic(i, _) => i,
             AST::LLMGenerate(i, _, _) => i,
+            AST::Comment(i, _) => i,
             AST::Error => todo!(),
         } = index;
     }
@@ -216,6 +219,18 @@ pub struct ParameterInfo {
 
 pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
     let loc = l.get_location();
+
+    if l.keyword("^#").is_some() {
+        let rest = l.rest();
+
+        let eol = l.expect_eol();
+        if eol.is_err() {
+            return Err(eol.err().unwrap());
+        }
+
+        l.advance();
+        return Ok(AST::Comment(loc, rest));
+    }
 
     if l.keyword("^return").is_some() {
         let nonblock = l.expect_noblock("return statement");

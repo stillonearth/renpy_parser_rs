@@ -85,12 +85,12 @@ pub fn parse_logical_lines(data: &str, filename: &str) -> Result<Vec<LogicalLine
             }
 
             // Handle comments
-            if c == '#' {
-                while pos < chars.len() && chars[pos] != '\n' {
-                    pos += 1;
-                }
-                continue;
-            }
+            // if c == '#' {
+            //     while pos < chars.len() && chars[pos] != '\n' {
+            //         pos += 1;
+            //     }
+            //     continue;
+            // }
 
             // Handle strings
             if c == '"' || c == '\'' || c == '`' {
