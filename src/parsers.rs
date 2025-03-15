@@ -2,6 +2,7 @@ use crate::lexer::Lexer;
 use anyhow::{anyhow, Result};
 use std::error;
 use std::fmt;
+use std::fmt::format;
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -59,7 +60,6 @@ impl ParseError {
 pub enum AST {
     Define(usize, String),
     Hide(usize, String),
-    Init(usize, Vec<AST>, i32),
     Jump(usize, String, bool),
     Label(usize, String, Vec<AST>, Option<String>),
     Play(usize, String, String),
@@ -79,7 +79,6 @@ impl AST {
         *match self {
             AST::Define(i, _) => i,
             AST::Hide(i, _) => i,
-            AST::Init(i, _, _) => i,
             AST::Jump(i, _, _) => i,
             AST::Label(i, _, _, _) => i,
             AST::Play(i, _, _) => i,
@@ -99,7 +98,6 @@ impl AST {
         *match self {
             AST::Define(i, _) => i,
             AST::Hide(i, _) => i,
-            AST::Init(i, _, _) => i,
             AST::Jump(i, _, _) => i,
             AST::Label(i, _, _, _) => i,
             AST::Play(i, _, _) => i,
@@ -113,6 +111,67 @@ impl AST {
             AST::Comment(i, _) => i,
             AST::Error => todo!(),
         } = index;
+    }
+}
+
+pub struct ASTVec<'a>(pub &'a [AST]);
+
+impl<'a> fmt::Display for ASTVec<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // let result = ast_list_to_string(self);
+
+        let mut strings: Vec<String> = Vec::new();
+        for element in self.0.iter() {
+            let str = format!("{}", *element);
+            strings.push(str);
+        }
+
+        write!(f, "{}", strings.join("\n"))
+    }
+}
+
+impl fmt::Display for AST {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let result = match self {
+            AST::Define(i, definition) => write!(f, "define {}", *definition),
+            AST::Hide(i, image) => write!(f, "hide {}", *image),
+            AST::Jump(i, label, _) => write!(f, "jump {}", *label),
+            AST::Label(i, name, block, _) => {
+                // let block_string = ast_list_to_string(block);
+                let block_string = format!("{}", ASTVec(&block));
+                let block_string = block_string.replace("\n", "\n    ");
+                write!(f, "label {}:\n    {}", *name, block_string)
+            }
+            AST::Play(i, sound_type, filename) => {
+                write!(f, "play {} \"{}\"", *sound_type, *filename)
+            }
+            AST::Return(i, _) => write!(f, "return"),
+            AST::Say(i, who, what) => {
+                if let Some(who) = who.clone() {
+                    write!(f, "{} \"{}\"", who, *what)
+                } else {
+                    write!(f, "\"{}\"", *what)
+                }
+            }
+            AST::Scene(i, _layer, name) => write!(f, "scene {}", *name),
+            AST::Show(i, image_name) => write!(f, "show {}", *image_name),
+            AST::Stop(loc, audio_specifier, effect, length) => {
+                write!(f, "stop {}", *audio_specifier)
+            }
+            AST::GameMechanic(i, mechanic) => write!(f, "game_mechanic \"{}\"", *mechanic),
+            AST::LLMGenerate(i, character, prompt) => {
+                let prompt = if prompt.is_some() {
+                    prompt.clone().unwrap()
+                } else {
+                    "".to_string()
+                };
+                write!(f, "llm_generate {} \"{}\"", *character, prompt)
+            }
+            AST::Comment(i, comment) => write!(f, "#{}", *comment),
+            AST::Error => write!(f, ""),
+        };
+
+        return result;
     }
 }
 
@@ -360,7 +419,6 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
 
         l.advance();
 
-        // let label = AST::Label(loc, name, block_ast, parameters);
         let label = AST::Label(loc, name, block_ast, None);
         return Ok(label);
     }
@@ -372,27 +430,6 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
 
         let label = AST::Define(loc, definition);
         return Ok(label);
-    }
-
-    if l.keyword("^init").is_some() {
-        let priority = l.integer().map_or(0, |p| p.parse::<i32>().unwrap_or(0));
-
-        let (block_ast, block_err) = {
-            l.require(":")?;
-            l.expect_eol()?;
-            l.expect_block("init statement")?;
-            parse_block(&mut l.subblock_lexer(false))
-        };
-
-        if !block_err.is_empty() {
-            for err in block_err {
-                l.error(&err)?;
-            }
-        }
-
-        l.advance();
-        let ast = AST::Init(loc, block_ast, priority);
-        return Ok(ast);
     }
 
     // Handle user statements or say statements.

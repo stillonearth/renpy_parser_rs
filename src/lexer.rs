@@ -37,7 +37,6 @@ impl Lexer {
     pub fn new(block: Vec<Block>, init: bool) -> Self {
         let keywords = HashSet::from([
             "hide",
-            "init",
             "jump",
             "return",
             "scene",

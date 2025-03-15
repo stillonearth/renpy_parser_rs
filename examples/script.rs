@@ -1,9 +1,7 @@
-use renpy_parser::parse_scenario_from_file;
+use renpy_parser::{parse_scenario_from_file, parsers::ASTVec};
 
 fn main() {
     let (ast, _parse_error) = parse_scenario_from_file("assets/script.rpy").unwrap();
 
-    for ast in ast {
-        println!("ast: {:?}", ast);
-    }
+    println!("{}", ASTVec(&ast));
 }
