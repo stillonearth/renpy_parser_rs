@@ -153,7 +153,10 @@ impl fmt::Display for AST {
                     write!(f, "\"{}\"", *what)
                 }
             }
-            AST::Scene(i, _layer, name) => write!(f, "scene {}", *name),
+            AST::Scene(i, name, _layer) => {
+                let name = name.clone().unwrap_or_default();
+                write!(f, "scene {}", name)
+            }
             AST::Show(i, image_name) => write!(f, "show {}", *image_name),
             AST::Stop(loc, audio_specifier, effect, length) => {
                 write!(f, "stop {}", *audio_specifier)
