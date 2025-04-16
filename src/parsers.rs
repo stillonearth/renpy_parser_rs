@@ -137,7 +137,6 @@ impl fmt::Display for AST {
             AST::Hide(i, image) => write!(f, "hide {}", *image),
             AST::Jump(i, label, _) => write!(f, "jump {}", *label),
             AST::Label(i, name, block, _) => {
-                // let block_string = ast_list_to_string(block);
                 let block_string = format!("{}", ASTVec(&block));
                 let block_string = block_string.replace("\n", "\n    ");
                 write!(f, "label {}:\n    {}", *name, block_string)
