@@ -333,6 +333,20 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(AST::Jump(loc, target, false));
     }
 
+    if l.keyword("^scene_generate").is_some() {
+        let argument = l.string();
+
+        if argument.is_none() {
+            l.error("Expected a string after 'scene_generate' keyword.")?;
+        }
+
+        l.expect_eol()?;
+        l.expect_noblock("scene_generate statement")?;
+        l.advance();
+
+        return Ok(AST::SceneGenerate(loc, argument.unwrap()));
+    }
+
     if l.keyword("^scene").is_some() {
         l.expect_noblock("scene statement")?;
 
@@ -362,25 +376,11 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         return Ok(AST::GameMechanic(loc, argument.unwrap()));
     }
 
-    if l.keyword("^scene_generate").is_some() {
-        let argument = l.string();
-
-        if argument.is_none() {
-            l.error("Expected a string after 'scene_generate' keyword.")?;
-        }
-
-        l.expect_eol()?;
-        l.expect_noblock("scene_generate statement")?;
-        l.advance();
-
-        return Ok(AST::SceneGenerate(loc, argument.unwrap()));
-    }
-
     if l.keyword("^music_generate").is_some() {
         let argument = l.string();
 
         if argument.is_none() {
-            l.error("Expected a string after 'scene_generate' keyword.")?;
+            l.error("Expected a string after 'music_generate' keyword.")?;
         }
 
         l.expect_eol()?;

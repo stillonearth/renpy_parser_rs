@@ -45,6 +45,8 @@ impl Lexer {
             "define",
             "game_mechanic",
             "llm_generate",
+            "scene_generate",
+            "music_generate",
         ]);
 
         Lexer {
