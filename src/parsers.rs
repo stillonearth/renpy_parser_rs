@@ -70,6 +70,8 @@ pub enum AST {
     Stop(usize, String, Option<String>, Option<f32>),
     GameMechanic(usize, String),
     LLMGenerate(usize, String, Option<String>),
+    SceneGenerate(usize, String),
+    MusicGenerate(usize, String),
     Comment(usize, String),
     Error,
 }
@@ -90,6 +92,8 @@ impl AST {
             AST::GameMechanic(i, _) => i,
             AST::LLMGenerate(i, _, _) => i,
             AST::Comment(i, _) => i,
+            AST::SceneGenerate(i, _) => i,
+            AST::MusicGenerate(i, _) => i,
             AST::Error => todo!(),
         }
     }
@@ -109,6 +113,8 @@ impl AST {
             AST::GameMechanic(i, _) => i,
             AST::LLMGenerate(i, _, _) => i,
             AST::Comment(i, _) => i,
+            AST::SceneGenerate(i, _) => i,
+            AST::MusicGenerate(i, _) => i,
             AST::Error => todo!(),
         } = index;
     }
@@ -171,6 +177,10 @@ impl fmt::Display for AST {
             }
             AST::Comment(i, comment) => write!(f, "#{}", *comment),
             AST::Error => write!(f, ""),
+            AST::SceneGenerate(i, prompt) => {
+                write!(f, "scene_generate \"{}\"", prompt)
+            }
+            AST::MusicGenerate(i, prompt) => write!(f, "music_generate \"{}\"", prompt),
         };
 
         return result;
@@ -350,6 +360,34 @@ pub fn parse_statement(l: &mut Lexer) -> Result<AST> {
         l.advance();
 
         return Ok(AST::GameMechanic(loc, argument.unwrap()));
+    }
+
+    if l.keyword("^scene_generate").is_some() {
+        let argument = l.string();
+
+        if argument.is_none() {
+            l.error("Expected a string after 'scene_generate' keyword.")?;
+        }
+
+        l.expect_eol()?;
+        l.expect_noblock("scene_generate statement")?;
+        l.advance();
+
+        return Ok(AST::SceneGenerate(loc, argument.unwrap()));
+    }
+
+    if l.keyword("^music_generate").is_some() {
+        let argument = l.string();
+
+        if argument.is_none() {
+            l.error("Expected a string after 'scene_generate' keyword.")?;
+        }
+
+        l.expect_eol()?;
+        l.expect_noblock("music_generate statement")?;
+        l.advance();
+
+        return Ok(AST::MusicGenerate(loc, argument.unwrap()));
     }
 
     if l.keyword("^llm_generate").is_some() {
